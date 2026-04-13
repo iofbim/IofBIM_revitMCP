@@ -29,7 +29,7 @@ public class ListLinkedDocumentsCommand : ICommand
             foreach (var inst in instances)
             {
                 var item = new Dictionary<string, object>();
-                item["link_instance_id"] = inst.Id.IntegerValue;
+                item["link_instance_id"] = inst.Id.Value;
 
                 // Try to access linked document (may be null if unloaded)
                 Document linkDoc = null;

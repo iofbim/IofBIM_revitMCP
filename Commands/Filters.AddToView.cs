@@ -185,7 +185,7 @@ public class AddViewFilterCommand : ICommand
                 view.SetFilterOverrides(filter.Id, overrideGraphicSettings);
 
                 response["status"] = "success";
-                response["filterId"] = filter.Id.IntegerValue;
+                response["filterId"] = filter.Id.Value;
 
                 tx.Commit();
             }

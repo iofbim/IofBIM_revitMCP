@@ -62,7 +62,7 @@ public class CreateSheetCommand : ICommand
             if (newSheet != null)
             {
                 response["status"] = "success";
-                response["sheet_id"] = newSheet.Id.IntegerValue;
+                response["sheet_id"] = newSheet.Id.Value;
                 response["sheet_name"] = newSheet.Name;
                 response["sheet_number"] = newSheet.SheetNumber;
             }

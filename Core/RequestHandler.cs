@@ -61,6 +61,8 @@ public class RequestHandler : IExternalEventHandler
         { "Ui.PushEvent", new UiPushEventCommand() }
     };
 
+    public bool HasPending => !_requests.IsEmpty;
+
     public void SetRequest(string body, HttpListenerContext context)
     {
         _requests.Enqueue((body, context));
@@ -68,6 +70,9 @@ public class RequestHandler : IExternalEventHandler
 
     public void Execute(UIApplication app)
     {
+        try { McpServer.Log($"RequestHandler.Execute() fired, queue size: {_requests.Count}"); } catch { }
+        try
+        {
         QueueProcessor.Start(app);
         while (_requests.TryDequeue(out var req))
         {
@@ -81,7 +86,12 @@ public class RequestHandler : IExternalEventHandler
         {
             var request = JsonConvert.DeserializeObject<Dictionary<string, string>>(requestBody);
 
-            if (request.ContainsKey("action") && CommandMap.ContainsKey(request["action"]))
+            if (request == null || !request.ContainsKey("action"))
+            {
+                response["status"] = "error";
+                response["message"] = $"Missing or empty request body. Received: {requestBody}";
+            }
+            else if (request.ContainsKey("action") && CommandMap.ContainsKey(request["action"]))
             {
                 response = CommandMap[request["action"].ToString()].Execute(app, request);
             }
@@ -118,6 +128,7 @@ public class RequestHandler : IExternalEventHandler
         {
             response["status"] = "error";
             response["message"] = ex.Message;
+            response["stack"] = ex.ToString();
         }
 
         string json = JsonConvert.SerializeObject(response);
@@ -133,6 +144,11 @@ public class RequestHandler : IExternalEventHandler
             context.Response.ContentType = "application/json";
             context.Response.OutputStream.Write(buffer, 0, buffer.Length);
             context.Response.Close();
+        }
+        }
+        catch (Exception ex)
+        {
+            McpServer.Log($"Execute() outer EXCEPTION: {ex}");
         }
     }
 

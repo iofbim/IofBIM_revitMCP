@@ -38,7 +38,7 @@ public class ExportToJsonCommand : ICommand
                 {
                     var elementData = new Dictionary<string, object>
                     {
-                        ["id"] = element.Id.IntegerValue,
+                        ["id"] = element.Id.Value,
                         ["name"] = element.Name,
                         ["category"] = categoryName
                     };

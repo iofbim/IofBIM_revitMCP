@@ -32,7 +32,9 @@ public class PostgresDb
         {
             if (args != null)
                 cmd.Parameters.AddRange(args);
-            return cmd.ExecuteNonQuery();
+            int result = cmd.ExecuteNonQuery();
+            cmd.Parameters.Clear(); // release parameters so they can be reused in fallback calls
+            return result;
         }
     }
 

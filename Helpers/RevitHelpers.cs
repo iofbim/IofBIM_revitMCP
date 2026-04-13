@@ -38,7 +38,7 @@ public static class RevitHelpers
         state["active_view"] = new Dictionary<string, object>
         {
             ["name"] = view.Name,
-            ["id"] = view.Id.IntegerValue,
+            ["id"] = view.Id.Value,
             ["type"] = view.ViewType.ToString()
         };
 
@@ -50,7 +50,7 @@ public static class RevitHelpers
 
             var item = new Dictionary<string, object>
             {
-                ["id"] = el.Id.IntegerValue,
+                ["id"] = el.Id.Value,
                 ["category"] = el.Category?.Name ?? string.Empty,
                 ["type_name"] = doc.GetElement(el.GetTypeId())?.Name ?? string.Empty
             };
@@ -73,7 +73,7 @@ public static class RevitHelpers
                         val = p.AsDouble().ToString();
                         break;
                     case StorageType.ElementId:
-                        val = p.AsElementId().IntegerValue.ToString();
+                        val = p.AsElementId().Value.ToString();
                         break;
                     default:
                         val = string.Empty;

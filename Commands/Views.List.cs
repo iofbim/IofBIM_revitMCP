@@ -46,8 +46,8 @@ public class ListViewsCommand : ICommand
             var viewports = new FilteredElementCollector(doc)
                 .OfClass(typeof(Viewport))
                 .Cast<Viewport>()
-                .GroupBy(v => v.ViewId.IntegerValue)
-                .ToDictionary(g => g.Key, g => (int?)g.First().SheetId.IntegerValue);
+                .GroupBy(v => v.ViewId.Value)
+                .ToDictionary(g => g.Key, g => (long?)g.First().SheetId.Value);
 
             var views = new FilteredElementCollector(doc)
                 .OfClass(typeof(View))
@@ -57,24 +57,23 @@ public class ListViewsCommand : ICommand
             foreach (var view in views)
             {
                 var item = new Dictionary<string, object>();
-                item["id"] = view.Id.IntegerValue;
+                item["id"] = view.Id.Value;
                 item["guid"] = view.UniqueId;
                 item["name"] = view.Name;
                 item["view_type"] = view.ViewType.ToString();
                 item["scale"] = view.Scale;
 
-                // Discipline is not available in Revit 2023, so use a placeholder
-                string discipline = "Unknown";
+                string discipline = view.Discipline.ToString();
                 item["discipline"] = discipline;
 
                 item["detail_level"] = view.DetailLevel.ToString();
-                viewports.TryGetValue(view.Id.IntegerValue, out int? sheetId);
+                viewports.TryGetValue(view.Id.Value, out long? sheetId);
                 item["associated_sheet_id"] = sheetId;
                 item["doc_id"] = doc.PathName;
                 result.Add(item);
 
                 if (db != null)
-                    db.UpsertView(view.Id.IntegerValue, Guid.Empty, view.Name, view.ViewType.ToString(), view.Scale, discipline, view.DetailLevel.ToString(), sheetId, doc.PathName, lastSaved);
+                    db.UpsertView((int)view.Id.Value, Guid.Empty, view.Name, view.ViewType.ToString(), view.Scale, discipline, view.DetailLevel.ToString(), sheetId.HasValue ? (int?)sheetId.Value : null, doc.PathName, lastSaved);
             }
 
             if (db != null)
@@ -104,7 +103,7 @@ public class ListViewsCommand : ICommand
                     foreach (var v in linkViews)
                     {
                         var item = new Dictionary<string, object>();
-                        item["id"] = v.Id.IntegerValue;
+                        item["id"] = v.Id.Value;
                         item["guid"] = v.UniqueId;
                         item["name"] = v.Name;
                         item["view_type"] = v.ViewType.ToString();
@@ -114,7 +113,7 @@ public class ListViewsCommand : ICommand
                         item["associated_sheet_id"] = null;
                         item["doc_id"] = linkDoc.PathName;
                         item["source"] = "link";
-                        item["link_instance_id"] = link.Id.IntegerValue;
+                        item["link_instance_id"] = link.Id.Value;
                         result.Add(item);
                     }
                 }

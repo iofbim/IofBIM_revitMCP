@@ -43,7 +43,7 @@ public class PlaceViewsOnSheetCommand : ICommand
         // ---------- Parse & validate input ----------
         if (!input.TryGetValue("view_ids", out var viewsStr) ||
             !input.TryGetValue("sheet_id", out var sheetStr) ||
-            !int.TryParse(sheetStr, out var sheetIdInt))
+            !long.TryParse(sheetStr, out var sheetIdInt))
         {
             EarlyError("Missing or invalid 'view_ids' or 'sheet_id'.");
             return response;
@@ -60,8 +60,8 @@ public class PlaceViewsOnSheetCommand : ICommand
         // View ids – keep integer list for reporting
         var viewIdInts = viewsStr.Split(',')
                                  .Select(s => s.Trim())
-                                 .Where(s => int.TryParse(s, out _))
-                                 .Select(int.Parse)
+                                 .Where(s => long.TryParse(s, out _))
+                                 .Select(long.Parse)
                                  .ToList();
         if (viewIdInts.Count == 0)
         {
@@ -69,7 +69,7 @@ public class PlaceViewsOnSheetCommand : ICommand
             return response;
         }
         IList<ElementId> viewIds = viewIdInts.Select(i => new ElementId(i)).ToList();
-        var remainingIds = new HashSet<int>(viewIdInts); // updated as views are placed
+        var remainingIds = new HashSet<long>(viewIdInts); // updated as views are placed
 
         // Validate sheet
         ViewSheet sheet = doc.GetElement(new ElementId(sheetIdInt)) as ViewSheet;
@@ -129,11 +129,11 @@ public class PlaceViewsOnSheetCommand : ICommand
                     tx.Start();
 
                     if (!Viewport.CanAddViewToSheet(doc, sheet.Id, viewId))
-                        throw new Exception($"View '{view.Title}' (id {viewId.IntegerValue}) cannot be placed on the sheet.");
+                        throw new Exception($"View '{view.Title}' (id {viewId.Value}) cannot be placed on the sheet.");
 
                     var vp = Viewport.Create(doc, sheet.Id, viewId, XYZ.Zero);
                     if (vp == null)
-                        throw new Exception($"Failed to create viewport for view '{view.Title}' (id {viewId.IntegerValue}).");
+                        throw new Exception($"Failed to create viewport for view '{view.Title}' (id {viewId.Value}).");
 
                     var vpBox = vp.get_BoundingBox(sheet) ?? throw new Exception($"Viewport bounding box is null for view '{view.Title}'.");
 
@@ -164,7 +164,7 @@ public class PlaceViewsOnSheetCommand : ICommand
 
                     tx.Commit();
                     placedCount++;
-                    remainingIds.Remove(viewId.IntegerValue);
+                    remainingIds.Remove(viewId.Value);
                 }
                 catch (Exception exView)
                 {

@@ -64,7 +64,24 @@ public class NewSharedParameterCommand : ICommand
                 definition = groupDef.Definitions.Create(options);
             }
 
-            var paramGroup = Enum.TryParse<BuiltInParameterGroup>(paramGroupName, out var group) ? group : BuiltInParameterGroup.PG_DATA;
+            // Revit 2025+: groups are identified by ForgeTypeId (GroupTypeId.*).
+            // Try to match by label (e.g. "Data", "Geometry"); fall back to GroupTypeId.Data.
+            ForgeTypeId paramGroupId = GroupTypeId.Data;
+            if (!string.IsNullOrEmpty(paramGroupName))
+            {
+                foreach (var prop in typeof(GroupTypeId).GetProperties(System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public))
+                {
+                    if (prop.GetValue(null) is ForgeTypeId candidate)
+                    {
+                        try
+                        {
+                            if (LabelUtils.GetLabelForGroup(candidate).Equals(paramGroupName, StringComparison.OrdinalIgnoreCase))
+                            { paramGroupId = candidate; break; }
+                        }
+                        catch { }
+                    }
+                }
+            }
 
             // Target categories
             var categoryNames = categoriesStr.Split(',').Select(s => s.Trim()).ToList();
@@ -98,7 +115,7 @@ public class NewSharedParameterCommand : ICommand
                 }
 
                 doc.ParameterBindings.Remove(definition);
-                doc.ParameterBindings.Insert(definition, binding, paramGroup);
+                doc.ParameterBindings.Insert(definition, binding, paramGroupId);
                 tx.Commit();
             }
 

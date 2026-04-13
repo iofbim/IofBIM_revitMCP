@@ -9,6 +9,7 @@ public class App : IExternalApplication
         try
         {
             McpServer.Start();
+            app.Idling += OnIdling;
             return Result.Succeeded;
         }
         catch (Exception ex)
@@ -16,6 +17,13 @@ public class App : IExternalApplication
             TaskDialog.Show("Startup Error", $"McpServer failed: {ex.Message}");
             return Result.Failed;
         }
+    }
+
+    private void OnIdling(object sender, Autodesk.Revit.UI.Events.IdlingEventArgs e)
+    {
+        var uiApp = sender as UIApplication;
+        if (uiApp != null)
+            McpServer.ProcessPending(uiApp);
     }
 
     public Result OnShutdown(UIControlledApplication app)

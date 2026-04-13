@@ -72,7 +72,7 @@ public class ListFamiliesAndTypesCommand : ICommand
                     var item = new Dictionary<string, object>();
                     item["family"] = type.FamilyName;
                     item["type"] = type.Name;
-                    item["id"] = type.Id.IntegerValue.ToString();
+                    item["id"] = type.Id.Value.ToString();
                     item["category"] = type.Category?.Name ?? string.Empty;
                     item["guid"] = type.UniqueId;
                     item["doc_id"] = doc.PathName;
@@ -110,12 +110,12 @@ public class ListFamiliesAndTypesCommand : ICommand
                             var item = new Dictionary<string, object>();
                             item["family"] = type.FamilyName;
                             item["type"] = type.Name;
-                            item["id"] = type.Id.IntegerValue.ToString();
+                            item["id"] = type.Id.Value.ToString();
                             item["category"] = type.Category?.Name ?? string.Empty;
                             item["guid"] = type.UniqueId;
                             item["doc_id"] = linkDoc.PathName;
                             item["source"] = "link";
-                            item["link_instance_id"] = link.Id.IntegerValue;
+                            item["link_instance_id"] = link.Id.Value;
                             result.Add(item);
                         }
                     }

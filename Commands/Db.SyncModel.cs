@@ -94,7 +94,7 @@ public class DbSyncModelCommand : ICommand
                     val = p.AsDouble().ToString();
                     break;
                 case StorageType.ElementId:
-                    val = p.AsElementId().IntegerValue.ToString();
+                    val = p.AsElementId().Value.ToString();
                     break;
             }
             info[p.Definition.Name] = val;
@@ -111,7 +111,7 @@ public class DbSyncModelCommand : ICommand
             if (definition == null || binding == null) continue;
             var paramData = new Dictionary<string, object>();
             paramData["name"] = definition.Name;
-            paramData["parameter_type"] = definition.ParameterGroup.ToString();
+            paramData["parameter_type"] = LabelUtils.GetLabelForGroup(definition.GetGroupTypeId());
             paramData["unit_type_id"] = definition.GetDataType()?.TypeId?.ToString() ?? string.Empty;
             paramData["binding_type"] = binding is InstanceBinding ? "Instance" : "Type";
             var categories = new List<string>();
@@ -132,7 +132,7 @@ public class DbSyncModelCommand : ICommand
         var typeMap = new Dictionary<ElementId, string>();
         foreach (ElementType type in typeCollector)
         {
-            db.UpsertElementType(type.Id.IntegerValue, ParseGuid(type.UniqueId), type.FamilyName, type.Name, type.Category?.Name ?? string.Empty, doc.PathName, lastSaved);
+            db.UpsertElementType((int)type.Id.Value, ParseGuid(type.UniqueId), type.FamilyName, type.Name, type.Category?.Name ?? string.Empty, doc.PathName, lastSaved);
             if (!typeMap.ContainsKey(type.Id))
                 typeMap[type.Id] = type.Name;
         }
@@ -151,7 +151,7 @@ public class DbSyncModelCommand : ICommand
                 var lvl = doc.GetElement(element.LevelId);
                 if (lvl != null) levelName = lvl.Name;
             }
-            db.StageElement(element.Id.IntegerValue, ParseGuid(element.UniqueId), element.Name, element.Category?.Name ?? string.Empty, typeName, levelName, doc.PathName, lastSaved);
+            db.StageElement((int)element.Id.Value, ParseGuid(element.UniqueId), element.Name, element.Category?.Name ?? string.Empty, typeName, levelName, doc.PathName, lastSaved);
             count++;
         }
         // Prune host stale rows before optional link sync
@@ -167,11 +167,11 @@ public class DbSyncModelCommand : ICommand
                 var instances = new FilteredElementCollector(doc)
                     .OfClass(typeof(RevitLinkInstance))
                     .Cast<RevitLinkInstance>();
-                var prunedInstances = new List<int>();
+                var prunedInstances = new List<long>();
                 foreach (var inst in instances)
                 {
                     string hostDocId = doc.PathName;
-                    int instanceId = inst.Id.IntegerValue;
+                    long instanceId = inst.Id.Value;
 
                     // Try to resolve link document id (path)
                     string linkDocId = string.Empty;
@@ -224,7 +224,7 @@ public class DbSyncModelCommand : ICommand
                     // Write/Update link instance row
                     // Use non-batched helper to ensure table exists; keep in same connection where possible
                     var pg = new PostgresDb(conn);
-                    pg.UpsertLinkInstance(hostDocId, instanceId, linkDocId,
+                    pg.UpsertLinkInstance(hostDocId, (int)instanceId, linkDocId,
                         ox, oy, oz,
                         bxx, bxy, bxz,
                         byx, byy, byz,
@@ -252,15 +252,15 @@ public class DbSyncModelCommand : ICommand
                                     case StorageType.String:  val = p.AsString(); break;
                                     case StorageType.Integer: val = p.AsInteger().ToString(); break;
                                     case StorageType.Double:  val = p.AsDouble().ToString(); break;
-                                    case StorageType.ElementId: val = p.AsElementId().IntegerValue.ToString(); break;
+                                    case StorageType.ElementId: val = p.AsElementId().Value.ToString(); break;
                                 }
-                                db.StageLinkedParameter(hostDocId, instanceId, t.Id.IntegerValue, p.Definition.Name, val, true,
+                                db.StageLinkedParameter(hostDocId, (int)instanceId, (int)t.Id.Value, p.Definition.Name, val, true,
                                     new[] { t.Category?.Name ?? string.Empty }, lastSaved);
                             }
 
                             // Capture linked element type metadata
-                            db.StageLinkedElementType(hostDocId, instanceId, linkDocId,
-                                t.Id.IntegerValue, ParseGuid(t.UniqueId), t.FamilyName, t.Name, t.Category?.Name ?? string.Empty, lastSaved);
+                            db.StageLinkedElementType(hostDocId, (int)instanceId, linkDocId,
+                                (int)t.Id.Value, ParseGuid(t.UniqueId), t.FamilyName, t.Name, t.Category?.Name ?? string.Empty, lastSaved);
                         }
 
                         var linkElems = new FilteredElementCollector(linkDoc).WhereElementIsNotElementType();
@@ -276,8 +276,8 @@ public class DbSyncModelCommand : ICommand
                                 var lvl = linkDoc.GetElement(le.LevelId);
                                 if (lvl != null) llevel = lvl.Name;
                             }
-                            db.StageLinkedElement(hostDocId, instanceId, linkDocId,
-                                le.Id.IntegerValue,
+                            db.StageLinkedElement(hostDocId, (int)instanceId, linkDocId,
+                                (int)le.Id.Value,
                                 ParseGuid(le.UniqueId),
                                 le.Name,
                                 le.Category?.Name ?? string.Empty,
@@ -295,9 +295,9 @@ public class DbSyncModelCommand : ICommand
                                     case StorageType.String:  val = p.AsString(); break;
                                     case StorageType.Integer: val = p.AsInteger().ToString(); break;
                                     case StorageType.Double:  val = p.AsDouble().ToString(); break;
-                                    case StorageType.ElementId: val = p.AsElementId().IntegerValue.ToString(); break;
+                                    case StorageType.ElementId: val = p.AsElementId().Value.ToString(); break;
                                 }
-                                db.StageLinkedParameter(hostDocId, instanceId, le.Id.IntegerValue, p.Definition.Name, val, false,
+                                db.StageLinkedParameter(hostDocId, (int)instanceId, (int)le.Id.Value, p.Definition.Name, val, false,
                                     new[] { le.Category?.Name ?? string.Empty }, lastSaved);
                             }
                         }
@@ -306,14 +306,14 @@ public class DbSyncModelCommand : ICommand
                         db.UpsertLinkedModelInfo(hostDocId, linkDocId, linkDoc.Title, ParseGuid(linkDoc.ProjectInformation?.UniqueId), lastSaved, null, null);
 
                         // Record instance for pruning
-                        prunedInstances.Add(instanceId);
+                        prunedInstances.Add((int)instanceId);
                     }
                 }
 
                 // Prune stale rows for host and processed link instances
                 db.PruneHostStaleInternal(doc.PathName, lastSaved);
                 foreach (var iid in prunedInstances)
-                    db.PruneLinkedStaleInternal(doc.PathName, iid, lastSaved);
+                    db.PruneLinkedStaleInternal(doc.PathName, (int)iid, lastSaved);
             }
             catch (Exception ex)
             {

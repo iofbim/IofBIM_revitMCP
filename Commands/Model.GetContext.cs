@@ -47,7 +47,7 @@ public class ListModelContextCommand : ICommand
                         val = p.AsDouble().ToString();
                         break;
                     case StorageType.ElementId:
-                        val = p.AsElementId().IntegerValue.ToString();
+                        val = p.AsElementId().Value.ToString();
                         break;
                 }
                 info[p.Definition.Name] = val;
@@ -68,7 +68,7 @@ public class ListModelContextCommand : ICommand
 
                 var paramData = new Dictionary<string, object>();
                 paramData["name"] = definition.Name;
-                paramData["parameter_type"] = definition.ParameterGroup.ToString();
+                paramData["parameter_type"] = LabelUtils.GetLabelForGroup(definition.GetGroupTypeId());
                 paramData["unit_type_id"] = definition.GetDataType()?.TypeId?.ToString() ?? string.Empty;
                 paramData["binding_type"] = binding is InstanceBinding ? "Instance" : "Type";
 

@@ -7,8 +7,8 @@
     <ProjectGuid>{C6A9210F-85B5-41D2-BBCD-E97A883F3FFA}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>IoB_revitMCP</RootNamespace>
-    <AssemblyName>IoB_revitMCP</AssemblyName>
+    <RootNamespace>IofBIM_revitMCP</RootNamespace>
+    <AssemblyName>IofBIM_revitMCP</AssemblyName>
     <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
     <LangVersion>8.0</LangVersion>
     <FileAlignment>512</FileAlignment>
@@ -43,7 +43,7 @@
     <ErrorReport>prompt</ErrorReport>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'">
-    <OutputPath>..\..\..\AppData\Roaming\Autodesk\Revit\Addins\2023\IoB_revitMCP\</OutputPath>
+    <OutputPath>..\..\..\AppData\Roaming\Autodesk\Revit\Addins\2023\IofBIM_revitMCP\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <Optimize>true</Optimize>
     <DebugType>pdbonly</DebugType>

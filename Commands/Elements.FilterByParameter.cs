@@ -32,7 +32,7 @@ public class FilterByParameterCommand : ICommand
                 var elementList = JsonConvert.DeserializeObject<List<Dictionary<string, object>>>(input["input_elements"]);
                 elements = elementList
                     .Select(dict => dict.ContainsKey("Id")
-                        ? doc.GetElement(new ElementId(Convert.ToInt32(dict["Id"])))
+                        ? doc.GetElement(new ElementId(Convert.ToInt64(dict["Id"])))
                         : null)
                     .Where(e => e != null)
                     .ToList();
@@ -56,7 +56,7 @@ public class FilterByParameterCommand : ICommand
                 {
                     result.Add(new Dictionary<string, object>
                     {
-                        { "Id", e.Id.IntegerValue },
+                        { "Id", e.Id.Value },
                         { "Name", e.Name }
                     });
                 }
@@ -64,7 +64,7 @@ public class FilterByParameterCommand : ICommand
 
             // Produce summary aggregates for UI
             var filteredElements = elements
-                .Where(e => result.Any(r => (int)r["Id"] == e.Id.IntegerValue))
+                .Where(e => result.Any(r => (long)r["Id"] == e.Id.Value))
                 .ToList();
 
             int total = filteredElements.Count;

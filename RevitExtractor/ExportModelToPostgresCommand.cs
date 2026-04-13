@@ -40,7 +40,7 @@ namespace RevitExtractor
                 var typeMap = new Dictionary<ElementId, string>();
                 foreach (ElementType type in typeCollector)
                 {
-                    db.StageElementType(type.Id.IntegerValue, ParseGuid(type.UniqueId), type.FamilyName,
+                    db.StageElementType((int)type.Id.Value, ParseGuid(type.UniqueId), type.FamilyName,
                         type.Name, type.Category?.Name ?? string.Empty, modelPath, lastSaved);
 
                     if (!typeMap.ContainsKey(type.Id))
@@ -59,7 +59,7 @@ namespace RevitExtractor
                         if (lvl != null) levelName = lvl.Name;
                     }
 
-                    db.StageElement(element.Id.IntegerValue, ParseGuid(element.UniqueId), element.Name,
+                    db.StageElement((int)element.Id.Value, ParseGuid(element.UniqueId), element.Name,
                         element.Category?.Name ?? string.Empty, typeName, levelName, modelPath, lastSaved);
                 }
 
@@ -71,7 +71,7 @@ namespace RevitExtractor
                     {
                         if (param.Definition == null) continue;
                         string val = ParamToString(param);
-                        db.StageTypeParameter(type.Id.IntegerValue, param.Definition.Name, val,
+                        db.StageTypeParameter((int)type.Id.Value, param.Definition.Name, val,
                             new[] { type.Category?.Name ?? string.Empty }, lastSaved, modelPath);
                     }
                 }
@@ -82,7 +82,7 @@ namespace RevitExtractor
                     {
                         if (param.Definition == null) continue;
                         string val = ParamToString(param);
-                        db.StageParameter(element.Id.IntegerValue, param.Definition.Name, val,
+                        db.StageParameter((int)element.Id.Value, param.Definition.Name, val,
                             false,
                             new[] { element.Category?.Name ?? string.Empty }, lastSaved, modelPath);
                     }
@@ -119,7 +119,7 @@ namespace RevitExtractor
                     case StorageType.Double:
                         return p.AsDouble().ToString(CultureInfo.InvariantCulture);
                     case StorageType.ElementId:
-                        return p.AsElementId().IntegerValue.ToString(CultureInfo.InvariantCulture);
+                        return p.AsElementId().Value.ToString(CultureInfo.InvariantCulture);
                     default:
                         return null;
                 }

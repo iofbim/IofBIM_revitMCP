@@ -40,7 +40,7 @@ public class ListElementsCommand : ICommand
         foreach (var e in collector)
         {
             var item = new Dictionary<string, object>();
-            item["id"] = e.Id.IntegerValue;
+            item["id"] = e.Id.Value;
             item["name"] = e.Name;
             item["doc_id"] = doc.PathName;
             elements.Add(item);
@@ -58,7 +58,7 @@ public class ListElementsCommand : ICommand
                     if (lvl != null) levelName = lvl.Name;
                 }
 
-                db.StageElement(e.Id.IntegerValue, ParseGuid(e.UniqueId), e.Name,
+                db.StageElement((int)e.Id.Value, ParseGuid(e.UniqueId), e.Name,
                     e.Category?.Name ?? string.Empty, typeName, levelName, doc.PathName, lastSaved);
             }
         }
@@ -83,11 +83,11 @@ public class ListElementsCommand : ICommand
                 foreach (var e in linked)
                 {
                     var item = new Dictionary<string, object>();
-                    item["id"] = e.Id.IntegerValue;
+                    item["id"] = e.Id.Value;
                     item["name"] = e.Name;
                     item["doc_id"] = linkDoc.PathName;
                     item["source"] = "link";
-                    item["link_instance_id"] = link.Id.IntegerValue;
+                    item["link_instance_id"] = link.Id.Value;
                     elements.Add(item);
                 }
             }

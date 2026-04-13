@@ -40,14 +40,14 @@ public class ListSchedulesCommand : ICommand
             foreach (var sch in col)
             {
                 var item = new Dictionary<string, object>();
-                item["id"] = sch.Id.IntegerValue;
+                item["id"] = sch.Id.Value;
                 item["guid"] = sch.UniqueId;
                 item["name"] = sch.Name;
                 item["category"] = sch.Definition?.CategoryId != null ? doc.GetElement(sch.Definition.CategoryId)?.Name : string.Empty;
                 item["doc_id"] = doc.PathName;
                 scheds.Add(item);
 
-                db.UpsertSchedule(sch.Id.IntegerValue, Guid.Empty, sch.Name, item["category"].ToString(), doc.PathName, lastSaved);
+                db.UpsertSchedule((int)sch.Id.Value, Guid.Empty, sch.Name, item["category"].ToString(), doc.PathName, lastSaved);
             }
             db.UpsertModelInfo(doc.PathName, doc.Title, ParseGuid(doc.ProjectInformation.UniqueId), lastSaved,
                 null, null);

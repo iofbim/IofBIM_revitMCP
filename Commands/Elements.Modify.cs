@@ -47,7 +47,7 @@ public class ModifyElementsCommand : ICommand
             foreach (JObject change in changes.OfType<JObject>())
             {
                 var item = new Dictionary<string, object>();
-                int idInt = change.TryGetValue("element_id", out var idToken) && int.TryParse(idToken.ToString(), out var tmp)
+                long idInt = change.TryGetValue("element_id", out var idToken) && long.TryParse(idToken.ToString(), out var tmp)
                     ? tmp : -1;
 
                 if (idInt < 0)
@@ -125,7 +125,7 @@ public class ModifyElementsCommand : ICommand
                                     success = param.Set(dblVal);
                                 break;
                             case StorageType.ElementId:
-                                if (int.TryParse(value, out var elid))
+                                if (long.TryParse(value, out var elid))
                                     success = param.Set(new ElementId(elid));
                                 break;
                         }

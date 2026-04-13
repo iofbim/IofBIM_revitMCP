@@ -2,7 +2,7 @@
 
 ## 1. Setup Npgsql Data Layer
 
-- Add `Npgsql` (and optionally `Dapper`) package references in `IoB_revitMCP.csproj` and `packages.config`.
+- Add `Npgsql` (and optionally `Dapper`) package references in `IofBIM_revitMCP.csproj` and `packages.config`.
 - Create a new folder `Data` with `PostgresDb.cs` that manages a connection string and exposes helpers:
   - `ExecuteNonQuery(string sql, params NpgsqlParameter[] args)`
   - `Query(string sql, params NpgsqlParameter[] args) : List<Dictionary<string,object>>`

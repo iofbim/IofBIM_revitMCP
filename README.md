@@ -55,19 +55,19 @@ This project provides a Revit add‑in that exposes a Model Context Protocol (MC
 ## Setup
 
 - Revit add‑in
-  - Build `IoB_revitMCP` for your Revit version (project targets Revit 2023 DLLs).
-  - Deploy the compiled DLLs into your Revit Addins folder and create a `.addin` manifest pointing to `IoB_revitMCP.dll`.
-  - Example manifest (save as `IoB_revitMCP.addin` under `%AppData%\Autodesk\Revit\Addins\2023`):
+  - Build `IofBIM_revitMCP` for your Revit version (project targets Revit 2026 DLLs, requires .NET 8).
+  - Deploy the compiled DLLs into your Revit Addins folder and create a `.addin` manifest pointing to `IofBIM_revitMCP.dll`.
+  - Example manifest (save as `IofBIM_revitMCP.addin` under `%AppData%\Autodesk\Revit\Addins\2025`):
 
   ```xml
   <?xml version="1.0" encoding="utf-8"?>
   <RevitAddIns>
     <AddIn Type="Application">
-      <Name>IoB Revit MCP</Name>
-      <Assembly>FULL_PATH_TO\IoB_revitMCP.dll</Assembly>
+      <Name>IofBIM Revit MCP</Name>
+      <Assembly>FULL_PATH_TO\IofBIM_revitMCP.dll</Assembly>
       <AddInId>8D83BE14-B739-4ACD-A9DB-7FD3F674B80B</AddInId>
       <FullClassName>App</FullClassName>
-      <VendorId>IOB</VendorId>
+      <VendorId>IofBIM</VendorId>
       <VendorDescription>MCP server for Revit</VendorDescription>
     </AddIn>
   </RevitAddIns>
@@ -107,7 +107,7 @@ This project provides a Revit add‑in that exposes a Model Context Protocol (MC
 - n8n workflow (vector tools + orchestration)
   - Import `AIAgentWorkflows/IofBIM_Revit_MCP_Controller_Local_LLM.json` into n8n.
   - Configure credentials:
-    - PostgreSQL: points to the same DB used by the add‑in; used by PGVector nodes and chat memory (table `IoB_RevitMCP_chatHistory`).
+    - PostgreSQL: points to the same DB used by the add‑in; used by PGVector nodes and chat memory (table `IofBIM_revitMCP_chatHistory`).
     - LLM: either Ollama (e.g., `llama3.2:latest`) or OpenAI.
   - Ensure the two PGVector stores are available (as configured in the workflow):
     - `revit_builtin_categories`: embeddings for category names/aliases.
@@ -204,3 +204,13 @@ See `LICENSE`.
   - `revit_linked_elementtypes(host_doc_id, link_instance_id, id, ...)`: linked element type metadata (batched).
   - `model_info_linked(host_doc_id, link_doc_id, ...)`: per-host model info for the linked document.
 - Stale-row pruning: during sync, rows older than the current session `last_saved` are pruned for the active host model and processed link instances.
+
+## For MCP server to run
+
+in powershell with administrator rights exebute below code
+
+```powershell
+
+netsh http add urlacl url=http://*:5005/mcp/ user=Everyone
+
+```

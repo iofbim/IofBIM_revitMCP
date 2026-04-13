@@ -15,9 +15,18 @@ public static class McpServer
 
     public static void Start()
     {
-        _listener = new HttpListener();
-        _listener.Prefixes.Add("http://*:5005/mcp/");
-        _listener.Start();
+        try
+        {
+            _listener = new HttpListener();
+            _listener.Prefixes.Add("http://*:5005/mcp/");
+            _listener.Start();
+            LogError("HttpListener started on http://*:5005/mcp/");
+        }
+        catch (Exception ex)
+        {
+            LogError($"HttpListener.Start() FAILED: {ex}");
+            throw;
+        }
 
         _handler = new RequestHandler();
         _externalEvent = ExternalEvent.Create(_handler);
@@ -29,6 +38,32 @@ public static class McpServer
     {
         _listener?.Stop();
         _listenTask?.Wait();
+    }
+
+    public static void RaiseIfPending()
+    {
+        if (_handler != null && _handler.HasPending && _externalEvent != null)
+        {
+            var result = _externalEvent.Raise();
+            if (result == ExternalEventRequest.Accepted)
+                LogError("RaiseIfPending: re-raised ExternalEvent");
+        }
+    }
+
+    public static void ProcessPending(UIApplication app)
+    {
+        if (_handler != null && _handler.HasPending)
+        {
+            LogError("ProcessPending: calling Execute() directly from Idling");
+            try
+            {
+                _handler.Execute(app);
+            }
+            catch (Exception ex)
+            {
+                LogError($"ProcessPending Execute() threw: {ex}");
+            }
+        }
     }
 
     private static async Task ListenAsync()
@@ -71,8 +106,10 @@ public static class McpServer
             reader = new StreamReader(context.Request.InputStream);
             string requestBody = await reader.ReadToEndAsync();
 
+            LogError($"Request received: {requestBody}");
             _handler.SetRequest(requestBody, context);
-            _externalEvent.Raise();
+            var raiseResult = _externalEvent.Raise();
+            LogError($"ExternalEvent.Raise() result: {raiseResult}");
         }
         catch (Exception ex)
         {
@@ -94,11 +131,16 @@ public static class McpServer
         }
     }
 
+    private static readonly string LogPath = @"C:\Temp\mcp.log";
+
+    public static void Log(string message) => LogError(message);
+
     private static void LogError(string message)
     {
         try
         {
-            File.AppendAllText("mcp.log",
+            Directory.CreateDirectory(@"C:\Temp");
+            File.AppendAllText(LogPath,
                 $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} {message}{Environment.NewLine}");
         }
         catch { }

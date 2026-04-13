@@ -28,7 +28,7 @@ public class CaptureToolStateCommand : ICommand
             var activeView = new Dictionary<string, object>
             {
                 ["name"] = view.Name,
-                ["id"] = view.Id.IntegerValue,
+                ["id"] = view.Id.Value,
                 ["type"] = view.ViewType.ToString()
             };
             state["active_view"] = activeView;
@@ -40,7 +40,7 @@ public class CaptureToolStateCommand : ICommand
                 if (el == null) continue;
 
                 var item = new Dictionary<string, object>();
-                item["id"] = el.Id.IntegerValue;
+                item["id"] = el.Id.Value;
                 item["category"] = el.Category?.Name ?? string.Empty;
                 item["type_name"] = doc.GetElement(el.GetTypeId())?.Name ?? string.Empty;
 
@@ -62,7 +62,7 @@ public class CaptureToolStateCommand : ICommand
                             val = p.AsDouble().ToString();
                             break;
                         case StorageType.ElementId:
-                            val = p.AsElementId().IntegerValue.ToString();
+                            val = p.AsElementId().Value.ToString();
                             break;
                         default:
                             val = string.Empty;

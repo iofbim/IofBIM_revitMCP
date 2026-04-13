@@ -3,21 +3,27 @@
   <PropertyGroup>
     <TargetFramework>net8.0-windows</TargetFramework>
     <OutputType>Library</OutputType>
-    <AssemblyName>RevitExtractor</AssemblyName>
-    <RootNamespace>RevitExtractor</RootNamespace>
+    <AssemblyName>IofBIM_revitMCP</AssemblyName>
+    <RootNamespace>IofBIM_revitMCP</RootNamespace>
     <LangVersion>latest</LangVersion>
     <PlatformTarget>x64</PlatformTarget>
     <Nullable>disable</Nullable>
     <ImplicitUsings>disable</ImplicitUsings>
+    <Deterministic>true</Deterministic>
+    <!-- Suppress all SDK auto-generated assembly attributes; we own them in Properties\AssemblyInfo.cs -->
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+    <!-- Suppress Microsoft.VisualBasic version conflict warning (Revit 2026 ships v10.1, SDK ships v10.0) -->
     <NoWarn>$(NoWarn);MSB3276;MSB3277</NoWarn>
     <BaseOutputPath>C:\Users\mct\AppData\Roaming\Autodesk\Revit\Addins\2026\IofBIM_revitMCP</BaseOutputPath>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
     <DebugSymbols>true</DebugSymbols>
-    <OutputPath>bin\Debug\</OutputPath>
+    <OutputPath>C:\Users\mct\AppData\Roaming\Autodesk\Revit\Addins\2026\IofBIM_revitMCP\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
@@ -28,6 +34,7 @@
     <DefineConstants>TRACE</DefineConstants>
     <Optimize>true</Optimize>
     <DebugType>pdbonly</DebugType>
+    <WarningLevel>5</WarningLevel>
   </PropertyGroup>
 
   <ItemGroup>
@@ -42,13 +49,19 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="IronPython" Version="3.4.1" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="Npgsql" Version="8.0.3" />
     <PackageReference Include="System.Configuration.ConfigurationManager" Version="8.0.0" />
   </ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\IofBIM_revitMCP.csproj" />
-  </ItemGroup>
+  <Target Name="CopyIronPythonDeps" AfterTargets="Build">
+    <ItemGroup>
+      <IronPythonFiles Include="$(USERPROFILE)\.nuget\packages\ironpython\3.4.1\lib\net6.0\*.dll" />
+      <DlrFiles Include="$(USERPROFILE)\.nuget\packages\dynamiclanguageruntime\1.3.4\lib\net6.0\*.dll" />
+    </ItemGroup>
+    <Copy SourceFiles="@(IronPythonFiles)" DestinationFolder="$(OutputPath)" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(DlrFiles)" DestinationFolder="$(OutputPath)" SkipUnchangedFiles="true" />
+  </Target>
 
 </Project>

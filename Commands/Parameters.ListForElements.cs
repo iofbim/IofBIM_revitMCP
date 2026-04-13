@@ -48,7 +48,7 @@ public class ListElementParametersCommand : ICommand
         DateTime lastSaved = System.IO.File.GetLastWriteTime(doc.PathName);
         var parameterCategories = ParameterMetadataCache.GetParameterCategories(doc, lastSaved);
 
-        var syncedElements = new List<int>();
+        var syncedElements = new List<long>();
         var failedElements = new List<Dictionary<string, object>>();
         var parameterNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
@@ -63,7 +63,7 @@ public class ListElementParametersCommand : ICommand
                     {
                         failedElements.Add(new Dictionary<string, object>
                         {
-                            ["element_id"] = id.IntegerValue,
+                            ["element_id"] = id.Value,
                             ["error"] = "Element not found."
                         });
                         continue;
@@ -72,13 +72,13 @@ public class ListElementParametersCommand : ICommand
                     StageElementMetadata(doc, element, db, lastSaved);
                     StageParameterMetadata(element, filterNames, parameterCategories, parameterNames, db, lastSaved, doc.PathName);
 
-                    syncedElements.Add(element.Id.IntegerValue);
+                    syncedElements.Add(element.Id.Value);
                 }
                 catch (Exception ex)
                 {
                     failedElements.Add(new Dictionary<string, object>
                     {
-                        ["element_id"] = id.IntegerValue,
+                        ["element_id"] = id.Value,
                         ["error"] = ex.Message
                     });
                 }
@@ -136,7 +136,7 @@ public class ListElementParametersCommand : ICommand
         {
             foreach (var part in idStr.Split(','))
             {
-                if (int.TryParse(part.Trim(), out var intId))
+                if (long.TryParse(part.Trim(), out var intId))
                     ids.Add(new ElementId(intId));
             }
         }
@@ -162,7 +162,7 @@ public class ListElementParametersCommand : ICommand
         }
 
         db.StageElement(
-            element.Id.IntegerValue,
+            (int)element.Id.Value,
             ParseGuid(element.UniqueId),
             element.Name,
             element.Category?.Name ?? string.Empty,
@@ -199,7 +199,7 @@ public class ListElementParametersCommand : ICommand
                 categories = cats.ToArray();
 
             db.StageParameter(
-                element.Id.IntegerValue,
+                (int)element.Id.Value,
                 name,
                 value,
                 isType,
@@ -221,7 +221,7 @@ public class ListElementParametersCommand : ICommand
                 return param.AsInteger().ToString(CultureInfo.InvariantCulture);
             case StorageType.ElementId:
                 var id = param.AsElementId();
-                return id != null ? id.IntegerValue.ToString(CultureInfo.InvariantCulture) : null;
+                return id != null ? id.Value.ToString(CultureInfo.InvariantCulture) : null;
             default:
                 return param.AsValueString();
         }

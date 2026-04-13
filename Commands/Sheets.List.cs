@@ -40,7 +40,7 @@ public class ListSheetsCommand : ICommand
             foreach (var sheet in col)
             {
                 var item = new Dictionary<string, object>();
-                item["id"] = sheet.Id.IntegerValue;
+                item["id"] = sheet.Id.Value;
                 item["guid"] = sheet.UniqueId;
                 item["name"] = sheet.Name;
                 item["number"] = sheet.SheetNumber;
@@ -50,7 +50,7 @@ public class ListSheetsCommand : ICommand
                 item["doc_id"] = doc.PathName;
                 sheets.Add(item);
 
-                db.UpsertSheet(sheet.Id.IntegerValue, Guid.Empty, sheet.Name, sheet.SheetNumber, item["title_block"].ToString(), doc.PathName, lastSaved);
+                db.UpsertSheet((int)sheet.Id.Value, Guid.Empty, sheet.Name, sheet.SheetNumber, item["title_block"].ToString(), doc.PathName, lastSaved);
             }
             db.UpsertModelInfo(doc.PathName, doc.Title, ParseGuid(doc.ProjectInformation.UniqueId), lastSaved,
                 null, null);
