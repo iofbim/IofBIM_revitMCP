@@ -68,7 +68,12 @@ public class BatchedPostgresDb : PostgresDb, IDisposable
     private void LogError(string context, Exception ex)
     {
         string msg = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] ERROR in {context}:\n{ex}\n";
-        System.IO.File.AppendAllText("revit-export-error.log", msg);
+        try
+        {
+            System.IO.Directory.CreateDirectory(@"C:\Temp");
+            System.IO.File.AppendAllText(@"C:\Temp\revit-export-error.log", msg);
+        }
+        catch { /* swallow log failures */ }
     }
     private void EnsureTransaction()
     {
@@ -145,7 +150,6 @@ public class BatchedPostgresDb : PostgresDb, IDisposable
         };
 
         if (_typeParamSqlMap.Count >= ChunkSize) FlushTypeParameters();
-            FlushElementTypes();
     }
 
     private void FlushElements()
@@ -164,13 +168,7 @@ public class BatchedPostgresDb : PostgresDb, IDisposable
                     doc_id = EXCLUDED.doc_id,
                     last_saved = EXCLUDED.last_saved
                 WHERE EXCLUDED.last_saved > revit_elements.last_saved";
-            try
-            {
-                new NpgsqlCommand(sqlV2, _conn, _tx).ExecuteNonQuery();
-            }
-            catch (PostgresException)
-            {
-                string sqlV1 = baseInsert + @"ON CONFLICT (id) DO UPDATE SET
+            string sqlV1 = baseInsert + @"ON CONFLICT (id) DO UPDATE SET
                     guid = EXCLUDED.guid,
                     name = EXCLUDED.name,
                     category = EXCLUDED.category,
@@ -179,13 +177,21 @@ public class BatchedPostgresDb : PostgresDb, IDisposable
                     doc_id = EXCLUDED.doc_id,
                     last_saved = EXCLUDED.last_saved
                 WHERE EXCLUDED.last_saved > revit_elements.last_saved";
+            new NpgsqlCommand("SAVEPOINT sp_flush", _conn, _tx).ExecuteNonQuery();
+            try
+            {
+                new NpgsqlCommand(sqlV2, _conn, _tx).ExecuteNonQuery();
+                new NpgsqlCommand("RELEASE SAVEPOINT sp_flush", _conn, _tx).ExecuteNonQuery();
+            }
+            catch (PostgresException)
+            {
+                new NpgsqlCommand("ROLLBACK TO SAVEPOINT sp_flush", _conn, _tx).ExecuteNonQuery();
                 new NpgsqlCommand(sqlV1, _conn, _tx).ExecuteNonQuery();
             }
         }
         catch (Exception ex)
         {
-            LogError("FlushParameters", ex);
-            Console.WriteLine("Error flushing parameters: " + ex.Message);
+            LogError("FlushElements", ex);
             throw;
         }
         _elementSqls.Clear();
@@ -224,12 +230,15 @@ public class BatchedPostgresDb : PostgresDb, IDisposable
                     last_saved = EXCLUDED.last_saved
                 WHERE EXCLUDED.last_saved > revit_parameters.last_saved";
 
+            new NpgsqlCommand("SAVEPOINT sp_flush", _conn, _tx).ExecuteNonQuery();
             try
             {
                 cmd.ExecuteNonQuery();
+                new NpgsqlCommand("RELEASE SAVEPOINT sp_flush", _conn, _tx).ExecuteNonQuery();
             }
             catch (PostgresException)
             {
+                new NpgsqlCommand("ROLLBACK TO SAVEPOINT sp_flush", _conn, _tx).ExecuteNonQuery();
                 var cmdLegacy = new NpgsqlCommand(string.Empty, _conn, _tx);
                 var sb2 = new StringBuilder();
                 int j = 0;
@@ -294,12 +303,15 @@ public class BatchedPostgresDb : PostgresDb, IDisposable
                     last_saved = EXCLUDED.last_saved
                 WHERE EXCLUDED.last_saved > revit_type_parameters.last_saved";
 
+            new NpgsqlCommand("SAVEPOINT sp_flush", _conn, _tx).ExecuteNonQuery();
             try
             {
                 cmd.ExecuteNonQuery();
+                new NpgsqlCommand("RELEASE SAVEPOINT sp_flush", _conn, _tx).ExecuteNonQuery();
             }
             catch (PostgresException)
             {
+                new NpgsqlCommand("ROLLBACK TO SAVEPOINT sp_flush", _conn, _tx).ExecuteNonQuery();
                 var cmdLegacy = new NpgsqlCommand(string.Empty, _conn, _tx);
                 var sb2 = new StringBuilder();
                 int j = 0;
@@ -359,13 +371,7 @@ public class BatchedPostgresDb : PostgresDb, IDisposable
                     doc_id = EXCLUDED.doc_id,
                     last_saved = EXCLUDED.last_saved
                 WHERE EXCLUDED.last_saved > revit_elementtypes.last_saved";
-            try
-            {
-                new NpgsqlCommand(sqlV2, _conn, _tx).ExecuteNonQuery();
-            }
-            catch (PostgresException)
-            {
-                string sqlV1 = baseInsert + @"ON CONFLICT (id) DO UPDATE SET
+            string sqlV1 = baseInsert + @"ON CONFLICT (id) DO UPDATE SET
                     guid = EXCLUDED.guid,
                     family = EXCLUDED.family,
                     type_name = EXCLUDED.type_name,
@@ -373,13 +379,21 @@ public class BatchedPostgresDb : PostgresDb, IDisposable
                     doc_id = EXCLUDED.doc_id,
                     last_saved = EXCLUDED.last_saved
                 WHERE EXCLUDED.last_saved > revit_elementtypes.last_saved";
+            new NpgsqlCommand("SAVEPOINT sp_flush", _conn, _tx).ExecuteNonQuery();
+            try
+            {
+                new NpgsqlCommand(sqlV2, _conn, _tx).ExecuteNonQuery();
+                new NpgsqlCommand("RELEASE SAVEPOINT sp_flush", _conn, _tx).ExecuteNonQuery();
+            }
+            catch (PostgresException)
+            {
+                new NpgsqlCommand("ROLLBACK TO SAVEPOINT sp_flush", _conn, _tx).ExecuteNonQuery();
                 new NpgsqlCommand(sqlV1, _conn, _tx).ExecuteNonQuery();
             }
         }
         catch (Exception ex)
         {
-            LogError("FlushParameters", ex);
-            Console.WriteLine("Error flushing parameters: " + ex.Message);
+            LogError("FlushElementTypes", ex);
             throw;
         }
         _elementTypeSqls.Clear();
@@ -565,14 +579,24 @@ public class BatchedPostgresDb : PostgresDb, IDisposable
             "DELETE FROM revit_parameters WHERE doc_id=@doc AND last_saved < @ts",
             "DELETE FROM revit_type_parameters WHERE doc_id=@doc AND last_saved < @ts",
             "DELETE FROM revit_elements WHERE doc_id=@doc AND last_saved < @ts",
-            "DELETE FROM revit_elementTypes WHERE doc_id=@doc AND last_saved < @ts"
+            "DELETE FROM revit_elementtypes WHERE doc_id=@doc AND last_saved < @ts"
         };
         foreach (var s in sqls)
         {
-            var cmd = new NpgsqlCommand(s, _conn, _tx);
-            cmd.Parameters.AddWithValue("@doc", (object)docId ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@ts", lastSaved);
-            cmd.ExecuteNonQuery();
+            new NpgsqlCommand("SAVEPOINT sp_prune", _conn, _tx).ExecuteNonQuery();
+            try
+            {
+                var cmd = new NpgsqlCommand(s, _conn, _tx);
+                cmd.Parameters.AddWithValue("@doc", (object)docId ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@ts", lastSaved);
+                cmd.ExecuteNonQuery();
+                new NpgsqlCommand("RELEASE SAVEPOINT sp_prune", _conn, _tx).ExecuteNonQuery();
+            }
+            catch (PostgresException ex)
+            {
+                new NpgsqlCommand("ROLLBACK TO SAVEPOINT sp_prune", _conn, _tx).ExecuteNonQuery();
+                LogError("PruneHostStaleInternal", ex);
+            }
         }
     }
 
@@ -587,11 +611,21 @@ public class BatchedPostgresDb : PostgresDb, IDisposable
         };
         foreach (var s in sqls)
         {
-            var cmd = new NpgsqlCommand(s, _conn, _tx);
-            cmd.Parameters.AddWithValue("@host", (object)hostDocId ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@iid", linkInstanceId);
-            cmd.Parameters.AddWithValue("@ts", lastSaved);
-            cmd.ExecuteNonQuery();
+            new NpgsqlCommand("SAVEPOINT sp_prune", _conn, _tx).ExecuteNonQuery();
+            try
+            {
+                var cmd = new NpgsqlCommand(s, _conn, _tx);
+                cmd.Parameters.AddWithValue("@host", (object)hostDocId ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@iid", linkInstanceId);
+                cmd.Parameters.AddWithValue("@ts", lastSaved);
+                cmd.ExecuteNonQuery();
+                new NpgsqlCommand("RELEASE SAVEPOINT sp_prune", _conn, _tx).ExecuteNonQuery();
+            }
+            catch (PostgresException ex)
+            {
+                new NpgsqlCommand("ROLLBACK TO SAVEPOINT sp_prune", _conn, _tx).ExecuteNonQuery();
+                LogError("PruneLinkedStaleInternal", ex);
+            }
         }
     }
 }

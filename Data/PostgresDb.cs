@@ -784,7 +784,7 @@ WHERE EXCLUDED.last_saved > revit_linked_elementtypes.last_saved";
         using (var conn = new NpgsqlConnection(_connectionString))
         using (var cmd = new NpgsqlCommand(sql, conn))
         {
-            cmd.Parameters.AddWithValue("@plan", planJson);
+            cmd.Parameters.Add(new NpgsqlParameter("@plan", NpgsqlTypes.NpgsqlDbType.Jsonb) { Value = planJson });
             conn.Open();
             return (int)cmd.ExecuteScalar();
         }
@@ -792,7 +792,15 @@ WHERE EXCLUDED.last_saved > revit_linked_elementtypes.last_saved";
 
     public (int id, string plan) DequeuePlan()
     {
-        string sql = "DELETE FROM mcp_queue WHERE id = (SELECT id FROM mcp_queue WHERE status = 'pending' ORDER BY id LIMIT 1 FOR UPDATE SKIP LOCKED) RETURNING id, plan";
+        // UPDATE instead of DELETE so the row survives for SetJobResult and error tracking
+        string sql = @"UPDATE mcp_queue SET status = 'processing'
+            WHERE id = (
+                SELECT id FROM mcp_queue
+                WHERE status = 'pending'
+                ORDER BY id
+                LIMIT 1
+                FOR UPDATE SKIP LOCKED
+            ) RETURNING id, plan::text";
         using (var conn = new NpgsqlConnection(_connectionString))
         using (var cmd = new NpgsqlCommand(sql, conn))
         {
@@ -815,7 +823,7 @@ WHERE EXCLUDED.last_saved > revit_linked_elementtypes.last_saved";
         string sql = "UPDATE mcp_queue SET status=@s, completed_at=NOW(), result=@r WHERE id=@id";
         ExecuteNonQuery(sql,
             new NpgsqlParameter("@s", status),
-            new NpgsqlParameter("@r", (object)resultJson ?? DBNull.Value),
+            new NpgsqlParameter("@r", NpgsqlTypes.NpgsqlDbType.Jsonb) { Value = (object)resultJson ?? DBNull.Value },
             new NpgsqlParameter("@id", id));
     }
 }

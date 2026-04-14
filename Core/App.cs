@@ -22,8 +22,9 @@ public class App : IExternalApplication
     private void OnIdling(object sender, Autodesk.Revit.UI.Events.IdlingEventArgs e)
     {
         var uiApp = sender as UIApplication;
-        if (uiApp != null)
-            McpServer.ProcessPending(uiApp);
+        if (uiApp == null) return;
+        McpServer.ProcessPending(uiApp);
+        QueueProcessor.ProcessNext(uiApp);
     }
 
     public Result OnShutdown(UIControlledApplication app)

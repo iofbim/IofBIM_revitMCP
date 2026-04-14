@@ -1,75 +1,77 @@
 using System;
 using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
 using Autodesk.Revit.UI;
 using Newtonsoft.Json;
 
 /// <summary>
-/// Background worker that executes queued plans from the <c>mcp_queue</c> table.
-/// Jobs are marked with a status and JSON result so external tools like n8n can
-/// poll the table for completion.
+/// Executes queued plans on the Revit main thread via the Idling event.
+/// Task.Run is intentionally avoided — the Revit API is only valid on the main thread.
 /// </summary>
 public static class QueueProcessor
 {
-    private static CancellationTokenSource _cts;
-    private static Task _task;
-    private static UIApplication _uiApp;
     private static bool _started;
+    private static bool _hasPending;
+    private static DateTime _lastPolled = DateTime.MinValue;
+    private const int PollIntervalSeconds = 5;
 
     public static void Start(UIApplication app)
     {
-        if (_started) return;
-        _uiApp = app;
-        _cts = new CancellationTokenSource();
-        _task = Task.Run(() => ProcessLoop(_cts.Token));
         _started = true;
     }
 
     public static void Stop()
     {
-        if (_cts != null)
-        {
-            _cts.Cancel();
-            _task?.Wait(1000);
-            _cts.Dispose();
-        }
         _started = false;
     }
 
-    private static void ProcessLoop(CancellationToken token)
+    /// <summary>
+    /// Signal that a job was just enqueued so ProcessNext polls immediately.
+    /// </summary>
+    public static void NotifyJobEnqueued()
     {
-        string conn = System.Configuration.ConfigurationManager.ConnectionStrings["mcp"]?.ConnectionString;
-        if (string.IsNullOrEmpty(conn)) return;
-        var db = new BatchedPostgresDb(conn);
-        var planCmd = new PlanExecutorCommand();
-        while (!token.IsCancellationRequested)
-        {
-            try
-            {
-                var (id, plan) = db.DequeuePlan();
-                if (id == 0)
-                {
-                    Task.Delay(1000, token).Wait(token);
-                    continue;
-                }
+        _hasPending = true;
+    }
 
-                var input = new Dictionary<string, string>
-                {
-                    {"steps", plan }
-                };
-                var result = planCmd.Execute(_uiApp, input);
-                string jsonResult = JsonConvert.SerializeObject(result);
-                db.SetJobResult(id, "done", jsonResult);
-            }
-            catch (OperationCanceledException)
-            {
-                break;
-            }
-            catch
-            {
-                // swallow and continue
-            }
+    /// <summary>
+    /// Called from the Idling event — runs on the Revit main thread.
+    /// Executes at most one pending job per idle tick.
+    /// </summary>
+    public static void ProcessNext(UIApplication app)
+    {
+        if (!_started) return;
+
+        // Rate-limit DB polling unless a job was just enqueued
+        if (!_hasPending && (DateTime.UtcNow - _lastPolled).TotalSeconds < PollIntervalSeconds)
+            return;
+
+        _lastPolled = DateTime.UtcNow;
+
+        string conn = DbConfigHelper.GetConnectionString();
+        if (string.IsNullOrEmpty(conn)) return;
+
+        var db = new PostgresDb(conn);
+        var (id, plan) = db.DequeuePlan();
+
+        if (id == 0)
+        {
+            _hasPending = false;
+            return;
+        }
+
+        McpServer.Log($"QueueProcessor: starting job {id}");
+        var planCmd = new PlanExecutorCommand();
+        var input = new Dictionary<string, string> { { "steps", plan } };
+        try
+        {
+            var result = planCmd.Execute(app, input);
+            string jsonResult = JsonConvert.SerializeObject(result);
+            db.SetJobResult(id, "done", jsonResult);
+            McpServer.Log($"QueueProcessor: job {id} completed");
+        }
+        catch (Exception ex)
+        {
+            McpServer.Log($"QueueProcessor: job {id} failed: {ex.Message}");
+            db.SetJobResult(id, "error", JsonConvert.SerializeObject(new { error = ex.Message, stack = ex.ToString() }));
         }
     }
 }

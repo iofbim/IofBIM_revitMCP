@@ -60,6 +60,7 @@ public class DbSyncModelCommand : ICommand
             };
             string planJson = JsonConvert.SerializeObject(new[] { step });
             int jobId = db.EnqueuePlan(planJson);
+            QueueProcessor.NotifyJobEnqueued();
             response["status"] = "queued";
             response["job_id"] = jobId;
             return response;
@@ -125,14 +126,15 @@ public class DbSyncModelCommand : ICommand
 
         string jsonInfo = JsonSerializer.Serialize(info);
         string jsonParams = JsonSerializer.Serialize(parameters);
-        db.UpsertModelInfo(doc.PathName, doc.Title, ParseGuid(doc.ProjectInformation.UniqueId), lastSaved, jsonInfo, jsonParams);
+        // NOTE: UpsertModelInfo is called AFTER CommitAll so it only marks
+        // the model as synced once elements are fully committed.
 
         // gather element types once and store in DB
         var typeCollector = new FilteredElementCollector(doc).WhereElementIsElementType();
         var typeMap = new Dictionary<ElementId, string>();
         foreach (ElementType type in typeCollector)
         {
-            db.UpsertElementType((int)type.Id.Value, ParseGuid(type.UniqueId), type.FamilyName, type.Name, type.Category?.Name ?? string.Empty, doc.PathName, lastSaved);
+            db.StageElementType((int)type.Id.Value, ParseGuid(type.UniqueId), type.FamilyName, type.Name, type.Category?.Name ?? string.Empty, doc.PathName, lastSaved);
             if (!typeMap.ContainsKey(type.Id))
                 typeMap[type.Id] = type.Name;
         }
@@ -322,6 +324,9 @@ public class DbSyncModelCommand : ICommand
             }
         }
         db.CommitAll();
+        // Write model_info only after elements are committed — prevents
+        // "up_to_date" false-positive if a previous sync failed mid-way.
+        db.UpsertModelInfo(doc.PathName, doc.Title, ParseGuid(doc.ProjectInformation.UniqueId), lastSaved, jsonInfo, jsonParams);
         response["status"] = "success";
         response["updated"] = count;
         response["model_name"] = doc.Title;
